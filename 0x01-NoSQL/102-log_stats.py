@@ -8,7 +8,7 @@ of the database logs
 from pymongo import MongoClient
 
 if __name__ == "__main__":
-    client = MongoClient('mongodb://127.0.0.1:27017')
+    client = MongoClient()
     logs_database = client.logs
     nginx_collection = logs_database.nginx
     total = nginx_collection.count_documents({})
