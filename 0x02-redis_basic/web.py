@@ -9,40 +9,25 @@ from functools import wraps
 redis_client = redis.Redis()
 
 
-def cache_page(expiration=10):
-    """
-    Decorator that caches the output of a function based on the URL parameter.
+def wrap_requests(method: Callable) -> Callable:
+    """Tracks how many times a particular URL is accessed"""
 
-    Parameters:
-    - expiration (int): The expiration time in seconds for the cache
-    (default is 10 seconds)
-
-    Returns:
-    - Callable: The decorated function that caches its output
-    """
-    def decorator(func):
-        @wraps(func)
-        def wrapper(url: str):
-            cached_page = r.get(f"cache:{url}")
-            if cached_page:
-                return cached_page.decode('utf-8')
-            page_content = func(url)
-            redis_client.setex(f"cache:{url}", expiration, page_content)
-            return page_content
-        return wrapper
-    return decorator
-
-
-def count_access(func):
-    @wraps(func)
-    def wrapper(url: str):
+    @wraps(method)
+    def wrapper(*args, **kwargs):
+        """Wrapper"""
+        url = args[0]
         redis_client.incr(f"count:{url}")
-        return func(url)
+        cached_response = redis_client.get(url)
+        if cached_response:
+            return cached_response.decode('utf-8')
+        result = method(url)
+        redis_client.setex(f"{url}, 10, {result}")
+        return method(*args, **kwargs)
+
     return wrapper
 
 
-@cache_page(expiration=10)
-@count_access
+@wrap_requests
 def get_page(url: str) -> str:
     """
     Obtain the HTML content of a particular URL
